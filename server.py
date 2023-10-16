@@ -1,83 +1,58 @@
-import socket
-import sys
+from fileinput import filename
+import socket, sys
 
-# Listen port and key file name
-LISTEN_PORT = int(sys.argv[1])
-KEY_FILE_NAME = sys.argv[2]
+# take in arguments
+listenPort = int(sys.argv[1])
+keyName = sys.argv[2]
 
-# Load the keys from the key file
+#temp debug to check args
+# print(listenPort)
+# print(keyName)
+
 keys = []
-with open(KEY_FILE_NAME, 'r', encoding='ascii') as file:
-    for line in file:
+
+with open(keyName, 'r', encoding='ascii') as file:
+    for i, line in enumerate(file):
         keys.append(line.strip())
 
-# Create a socket
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((socket.gethostname(), LISTEN_PORT))
-server_socket.listen(5)
+#establish socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((socket.gethostname(), listenPort))
+#temp print to get host name
+print(socket.gethostname())
+s.listen(5)
 
-# Accept a connection
-client_socket, client_address = server_socket.accept()
+#listen for connection
+c, address = s.accept()
+msg = c.recv(1028)
+print(msg.decode("ascii"))
+if msg.decode("ascii") == "HELLO":
+    c.send("260 OK".encode("ascii"))
+    while True:
+        msg = c.recv(1028)
+        if msg.decode("ascii") == "DATA":
+            msg.recv(10000)
+            #unescape the line here
 
-# Receive the first message from the client
-message = client_socket.recv(1028)
-message_decoded = message.decode("ascii")
-
-# Check if the first message is "HELLO"
-if message_decoded != "HELLO":
+            #use sha256 hash here
+            c.send("270 SIG".encode("ascii"))
+            #send back sig
+            msg.recv(1028)
+            if msg.decode("ascii") == "PASS":
+                c.send("260 OK".encode("ascii"))
+            elif msg.decode("ascii") == "FAIL":
+                c.send("260 OK".encode("ascii"))
+            else:
+                print("error: illegal command, expecting PASS or FAIL")
+                c.close()
+                break
+        elif msg.decode("ascii") == "QUIT":
+            c.close()
+            break
+        else:
+            print("error: illegal command, expecting DATA or QUIT")
+            c.close()
+            break
+else:
     print("error: illegal command, expecting HELLO")
-    client_socket.close()
-    exit(1)
-
-# Send a "260 OK" message to the client
-client_socket.send("260 OK".encode("ascii"))
-
-# Start a loop to receive and process messages from the client
-while True:
-    # Receive the next message from the client
-    message = client_socket.recv(1028)
-    message_decoded = message.decode("ascii")
-
-    # Check if the message is "DATA"
-    if message_decoded != "DATA":
-        print("error: illegal command, expecting DATA or QUIT")
-        client_socket.close()
-        exit(1)
-
-    # Receive the data from the client
-    data = client_socket.recv(10000)
-
-    # Unescape the data
-    unescaped_data = data.decode("ascii")
-
-    # Generate a SHA-256 hash of the data
-    hash = sha256(unescaped_data.encode("ascii")).hexdigest()
-
-    # Send a "270 SIG" message to the client
-    client_socket.send("270 SIG".encode("ascii"))
-
-    # Send the hash to the client
-    client_socket.send(hash.encode("ascii"))
-
-    # Receive the next message from the client
-    message = client_socket.recv(1028)
-    message_decoded = message.decode("ascii")
-
-    # Check if the message is "PASS" or "FAIL"
-    if message_decoded != "PASS" and message_decoded != "FAIL":
-        print("error: illegal command, expecting PASS or FAIL")
-        client_socket.close()
-        exit(1)
-
-    # Send a "260 OK" message to the client
-    client_socket.send("260 OK".encode("ascii"))
-
-    # If the message is "QUIT", break out of the loop
-    if message_decoded == "QUIT":
-        break
-
-# Close the client socket
-client_socket.close()
-
-# Close the server socket
-server_socket.close()
+    c.close()

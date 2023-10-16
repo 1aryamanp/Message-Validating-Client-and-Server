@@ -1,75 +1,80 @@
-import socket
-import sys
+import socket, sys
 
-# Server name, port, and message and signature file names
-SERVER_NAME = sys.argv[1]
-SERVER_PORT = int(sys.argv[2])
-MSG_FILE_NAME = sys.argv[3]
-SIG_FILE_NAME = sys.argv[4]
+#take in arguments
+serverName = sys.argv[1]
+serverPort = int(sys.argv[2])
+msgName = sys.argv[3]
+sigName = sys.argv[4]
 
-# Load the messages and signatures from the files
-msg_sizes = []
-msg_bytes = []
+#temp debug to check args
+# print(serverName)
+# print(serverPort)
+# print(msgName)
+# print(sigName)
+
+msgSizes = []
+msgBytes = []
 signatures = []
 
-with open(MSG_FILE_NAME, 'r', encoding='ascii') as file:
-    for i, line in enumerate(file):
-        if i % 2 == 0:
-            msg_sizes.append(int(line.strip()))
-        else:
-            msg_bytes.append(bytes(line.strip(), 'ascii'))
+with open(msgName, 'r', encoding='ascii') as file:
+ for i, line in enumerate(file):
+  if i%2==0:
+   msgSizes.append(int(line.strip()))
+  else:
+   tempBytes = bytes(line.strip(),'ascii')
+   msgBytes.append(tempBytes) 
+    
+with open(sigName, 'r', encoding='ascii') as file:
+ for i, line in enumerate(file):
+  signatures.append(line.strip())
+    
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((serverName, serverPort))
 
-with open(SIG_FILE_NAME, 'r', encoding='ascii') as file:
-    for i, line in enumerate(file):
-        signatures.append(line.strip())
+s.send("HELLO".encode("ascii"))
 
-# Create a socket and connect to the server
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((SERVER_NAME, SERVER_PORT))
+msg = s.recv(128)
+if msg.decode("ascii") != "260 OK":
+ print("error: expected 260 OK")
+ exit()
 
-# Send the "HELLO" message to the server
-client_socket.send("HELLO".encode("ascii"))
+# escape the message here
+escapedMsg = []
+for byte in msgBytes:
+ if byte == 34:
+  escapedMsg.append(92)
+  escapedMsg.append(34)
+ else:
+  escapedMsg.append(byte)
 
-# Receive the response from the server
-server_response = client_socket.recv(128)
+# decode the escaped message to a string using the unicode_escape encoding with the backslashreplace error handler
+escapedMsgString = bytes(escapedMsg).decode("unicode_escape", "backslashreplace")
 
-# Check if the response is "260 OK"
-if server_response.decode("ascii") != "260 OK":
-    print("error: expected 260 OK")
-    exit(1)
+# create a bytearray from the escaped message string
+escapedMsgByteArray = bytearray(escapedMsgString)
 
-# Send the escaped messages to the server
-for i in range(len(msg_bytes)):
-    escaped_msg = msg_bytes[i]
-    client_socket.send(escaped_msg.encode("ascii"))
+# send the escaped message
+s.send(escapedMsgByteArray)
 
-    # Receive the response from the server
-    server_response = client_socket.recv(128)
+msg = s.recv(128)
+if msg.decode("ascii") != "270 SIG":
+ print("error: expected 270 SIG")
+ exit()
 
-    # Check if the response is "270 SIG"
-    if server_response.decode("ascii") != "270 SIG":
-        print("error: expected 270 SIG")
-        exit(1)
+# receive the signature
+signature = s.recv(10000)
 
-    # Receive the signature from the server
-    signature = client_socket.recv(10000)
+# compare the signature to the expected signature
+if signature == signatures[0]:
+ s.send("PASS".encode("ascii"))
+else:
+ s.send("FAIL".encode("ascii"))
 
-    # Compare the signature to the expected signature
-    if signature == signatures[i]:
-        client_socket.send("PASS".encode("ascii"))
-    else:
-        client_socket.send("FAIL".encode("ascii"))
+# receive the response from the server
+msg = s.recv(128)
+if msg.decode("ascii") != "260 OK":
+ print("error: expected 260 OK")
+ exit()
 
-# Receive the response from the server
-server_response = client_socket.recv(128)
-
-# Check if the response is "260 OK"
-if server_response.decode("ascii") != "260 OK":
-    print("error: expected 260 OK")
-    exit(1)
-
-# Send the "QUIT" message to the server
-client_socket.send("QUIT".encode("ascii"))
-
-# Close the client socket
-client_socket.close()
+# close the socket
+s.close()
