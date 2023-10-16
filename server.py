@@ -14,10 +14,10 @@ with open(keyName, 'r', encoding='ascii') as file:
 
 # establish socket
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((socket.gethostname(), listenPort))
+s.bind(('0.0.0.0', listenPort))
 s.listen(5)
 
-print(socket.gethostname())
+print('The Port is:',listenPort)
 
 while True:
     c, address = s.accept()
