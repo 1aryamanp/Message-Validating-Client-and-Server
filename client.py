@@ -1,80 +1,68 @@
-import socket, sys
+import socket
+import sys
 
-#take in arguments
-serverName = sys.argv[1]
-serverPort = int(sys.argv[2])
-msgName = sys.argv[3]
-sigName = sys.argv[4]
+def main():
+    serverName = sys.argv[1]
+    serverPort = int(sys.argv[2])
+    msgName = sys.argv[3]
+    sigName = sys.argv[4]
 
-#temp debug to check args
-# print(serverName)
-# print(serverPort)
-# print(msgName)
-# print(sigName)
+    msgSizes = []
+    msgBytes = []
+    signatures = []
 
-msgSizes = []
-msgBytes = []
-signatures = []
+    with open(msgName, 'r', encoding='utf-8') as file:
+        for i, line in enumerate(file):
+            if i % 2 == 0:
+                msgSizes.append(int(line.strip()))
+            else:
+                tempBytes = bytes(line.strip(), 'utf-8')
+                msgBytes.append(tempBytes)
 
-with open(msgName, 'r', encoding='ascii') as file:
- for i, line in enumerate(file):
-  if i%2==0:
-   msgSizes.append(int(line.strip()))
-  else:
-   tempBytes = bytes(line.strip(),'ascii')
-   msgBytes.append(tempBytes) 
-    
-with open(sigName, 'r', encoding='ascii') as file:
- for i, line in enumerate(file):
-  signatures.append(line.strip())
-    
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((serverName, serverPort))
+    with open(sigName, 'r', encoding='ascii') as file:
+        for line in file:
+            signatures.append(line.strip())
 
-s.send("HELLO".encode("ascii"))
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((serverName, serverPort))
 
-msg = s.recv(128)
-if msg.decode("ascii") != "260 OK":
- print("error: expected 260 OK")
- exit()
+    s.send("HELLO".encode("ascii"))
 
-# escape the message here
-escapedMsg = []
-for byte in msgBytes:
- if byte == 34:
-  escapedMsg.append(92)
-  escapedMsg.append(34)
- else:
-  escapedMsg.append(byte)
+    msg = s.recv(128)
+    if msg.decode("ascii") != "260 OK":
+        print("error: expected 260 OK")
+        s.close()
+        return
 
-# decode the escaped message to a string using the unicode_escape encoding with the backslashreplace error handler
-escapedMsgString = bytes(escapedMsg).decode("unicode_escape", "backslashreplace")
+    for i in range(len(msgSizes)):
+        s.send("DATA".encode("ascii"))
+        s.send(msgBytes[i])  # Send the message
+        response = s.recv(128)
 
-# create a bytearray from the escaped message string
-escapedMsgByteArray = bytearray(escapedMsgString)
+        if response.decode("ascii") != "270 SIG":
+            print("error: expected 270 SIG")
+            s.close()
+            return
 
-# send the escaped message
-s.send(escapedMsgByteArray)
+        # Receive the server's computed signature
+        server_signature = s.recv(128)
 
-msg = s.recv(128)
-if msg.decode("ascii") != "270 SIG":
- print("error: expected 270 SIG")
- exit()
+        # Compare the signature to the expected signature
+        if server_signature.decode("ascii") == signatures[i]:
+            s.send("PASS".encode("ascii"))
+        else:
+            s.send("FAIL".encode("ascii"))
 
-# receive the signature
-signature = s.recv(10000)
+        response = s.recv(128)
 
-# compare the signature to the expected signature
-if signature == signatures[0]:
- s.send("PASS".encode("ascii"))
-else:
- s.send("FAIL".encode("ascii"))
+        if response.decode("ascii") != "260 OK":
+            print("error: expected 260 OK")
+            s.close()
+            return
 
-# receive the response from the server
-msg = s.recv(128)
-if msg.decode("ascii") != "260 OK":
- print("error: expected 260 OK")
- exit()
+    # Send the QUIT message and close the socket
+    s.send("QUIT".encode("ascii"))
+    s.close()
 
-# close the socket
-s.close()
+if __name__ == "__main__":
+    main()
