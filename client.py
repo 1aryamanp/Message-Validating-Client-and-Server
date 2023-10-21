@@ -1,68 +1,137 @@
+from os import makedirs
 import socket
 import sys
 
-def main():
-    serverName = sys.argv[1]
-    serverPort = int(sys.argv[2])
-    msgName = sys.argv[3]
-    sigName = sys.argv[4]
+# read message file
+def read_message_file(filename):
+    messages = []
 
-    msgSizes = []
-    msgBytes = []
+    try:
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+            message = ""
+            for line in lines:
+                line = line.strip()
+                # Check if the line is empty or a number
+                if not line or line.isdigit():
+                    if message:
+                        # Remove the trailing space and append the message
+                        message = message.rstrip()
+                        messages.append(message)
+                    message = ""
+                else:
+                    message += line + " "
+            if message:
+                # Remove the trailing space and append the last message
+                message = message.rstrip()
+                messages.append(message)
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+    return messages
+
+# read signature file
+def read_signature_file(filename): 
     signatures = []
 
-    with open(msgName, 'r', encoding='utf-8') as file:
-        for i, line in enumerate(file):
-            if i % 2 == 0:
-                msgSizes.append(int(line.strip()))
-            else:
-                tempBytes = bytes(line.strip(), 'utf-8')
-                msgBytes.append(tempBytes)
-
-    with open(sigName, 'r', encoding='ascii') as file:
-        for line in file:
-            signatures.append(line.strip())
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((serverName, serverPort))
-
-    s.send("HELLO".encode("ascii"))
-
-    msg = s.recv(128)
-    if msg.decode("ascii") != "260 OK":
-        print("error: expected 260 OK")
-        s.close()
+    try:
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+            for line in lines:
+                signature = line.strip()
+                signatures.append(signature)
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+    
+    return signatures
+    
+    
+def main():
+        
+    if len(sys.argv) != 5:
+        print("Incorrect usage of input arguments")
         return
+        
+    server_name = sys.argv[1]
+    server_port = int(sys.argv[2])
+    message_file = sys.argv[3]
+    sig_file = sys.argv[4]
 
-    for i in range(len(msgSizes)):
-        s.send("DATA".encode("ascii"))
-        s.send(msgBytes[i])  # Send the message
-        response = s.recv(128)
+    #read message and signature files
+    messages = read_message_file(message_file)
+    signatures = read_signature_file(sig_file)
+    
 
-        if response.decode("ascii") != "270 SIG":
-            print("error: expected 270 SIG")
-            s.close()
+    if len(messages) != len(signatures):
+        print("Error: Number of messages and signatures must match")
+        return
+    
+    # open a socket connection
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((server_name, server_port))
+
+    # send the "HELLO" message
+
+    client_socket.send("HELLO\n".encode("ascii"))
+
+    # recivning 260 OK
+    response = client_socket.recv(1024).decode("ascii").strip()
+    print(response)
+
+    if response != "260 OK":
+        print("Error: Failed to establish a connection with the server")
+        client_socket.close()
+        return
+    
+    message_counter = 0
+    for message, signature in zip(messages, signatures):
+        # send data command
+        client_socket.send("DATA\n".encode("ascii"))
+
+        # send the message
+        # client_socket.send(f"{len(message)}\n".encode("ascii"))
+        client_socket.sendall((message+"\n.\n").encode("ascii"))
+        
+        response = client_socket.recv(1024).decode("ascii").strip()
+        print(response)
+
+        if response != "270 SIG":
+            print ("Error: Invalid response from the server")
+            # client_socket.close()
             return
+        
+        received_sig = client_socket.recv(1024).decode("ascii").strip()
+        print(received_sig)
 
-        # Receive the server's computed signature
-        server_signature = s.recv(128)
-
-        # Compare the signature to the expected signature
-        if server_signature.decode("ascii") == signatures[i]:
-            s.send("PASS".encode("ascii"))
+        if received_sig == signature:
+            print('aryaman')
+            client_socket.send("PASS\n".encode("ascii"))
         else:
-            s.send("FAIL".encode("ascii"))
+            print('vraj')
+            client_socket.send("FAIL\n".encode("ascii"))
+        
 
-        response = s.recv(128)
-
-        if response.decode("ascii") != "260 OK":
-            print("error: expected 260 OK")
-            s.close()
+        new_response = client_socket.recv(1024).decode("ascii").strip()
+        print(new_response)
+        
+        if new_response != "260 OK":
+            print("no 260 OK response to pass/fail")
+            #client_socket.close()
             return
+        
+        message_counter += 1
+        
+        if message_counter == 10:
+            break
 
-    # Send the QUIT message and close the socket
-    s.send("QUIT".encode("ascii"))
-    s.close()
+    #after sending the quit command
+    client_socket.send("QUIT\n".encode("ascii"))
+    #close the TCP socket
+    client_socket.close()
 
 if __name__ == "__main__":
     main()
+
+       
+    
+        
