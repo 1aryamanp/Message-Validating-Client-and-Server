@@ -1,11 +1,20 @@
 import socket
 import hashlib
 import sys
+import re
 
-
+'''
+def unescape(line):
+    # Replace backslashes and periods with their escaped counterparts
+    line = line.replace(".", "\\.")
+    line = line.replace("\\.", ".")
+    return line
+'''
 def unescape(line):
     line = line.replace("\\\\","\\").replace("\\.",".")
     line = line.replace("\n.","").replace("\n","")
+    #line = line.replace(".", ".\n")
+    #line += "\n."
     return line
 
     
@@ -40,9 +49,9 @@ def main():
     while True:
         # Accept a client connection
         client_socket, client_address = server_socket.accept()
-        request = client_socket.recv(1024).decode("ascii")
+        request = client_socket.recv(1024).decode("ascii").strip()
 
-        if request == "HELLO\n":
+        if request == "HELLO":
             #  sending the 260 OK response to acknowledge the hello
             print(request)
             client_socket.send("260 OK\n".encode("ascii"))
@@ -54,7 +63,7 @@ def main():
             return
         
         while True:
-            command = client_socket.recv(1024).decode("ascii") # client should potentially send a DATA command...
+            command = client_socket.recv(1024).decode("ascii").strip() # client should potentially send a DATA command...
 
             if not command:
                 break
@@ -63,11 +72,11 @@ def main():
             print(command)
             
 
-            if command == "DATA\n":
+            if command == "DATA":
                 while True:
                     
                     # reciving message from the client
-                    line = client_socket.recv(1024).decode("ascii")#.strip()
+                    line = client_socket.recv(1024).decode("ascii").strip()
                     
                     # unescaping the message (have to fix)
                     line = unescape(line)
@@ -92,18 +101,18 @@ def main():
                     
                     # send the 270 SIG status code and the updated hash to the client
                     client_socket.send("270 SIG\n".encode("ascii"))
-                    client_socket.send((hash_value+"\n").encode("ascii"))
+                    client_socket.send(hash_value.encode("ascii"))
 
                     # pass_or_fail check from the client after sending message back
-                    pass_or_fail = client_socket.recv(1024).decode("ascii")
+                    pass_or_fail = client_socket.recv(1024).decode("ascii").strip()
                      # prints whatever response client sent
 
-                    if pass_or_fail == "PASS\n":
+                    if pass_or_fail == "PASS":
                         # Handle the case where the client passed the validation
-                        print(pass_or_fail)
-                    elif pass_or_fail == "FAIL\n":
+                        print('PASS')
+                    elif pass_or_fail == "FAIL":
                         # Handle the case where the client failed the validation
-                        print(pass_or_fail)
+                        print('FAIL')
                     else:
                         print("Invalid response from client")
                         client_socket.close()
@@ -115,7 +124,7 @@ def main():
                     client_socket.send("260 OK\n".encode("ascii"))
                     break
 
-            elif command == "QUIT\n":
+            elif command == "QUIT":
                 # print and acknowledge quit command ^ i guess it is already coded above ?
                 # close the socket and exit the program
                 client_socket.close()

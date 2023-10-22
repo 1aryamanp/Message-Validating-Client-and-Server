@@ -80,10 +80,10 @@ def main():
     client_socket.send("HELLO\n".encode("ascii"))
 
     # recivning 260 OK
-    response = client_socket.recv(1024).decode("ascii")#.strip()
+    response = client_socket.recv(1024).decode("ascii").strip()
     print(response)
 
-    if response != "260 OK\n":
+    if response != "260 OK":
         print("Error: Failed to establish a connection with the server")
         client_socket.close()
         return
@@ -97,18 +97,16 @@ def main():
         message = escape(message)
         client_socket.send((message+"\n.\n").encode("ascii"))
         
-        response = client_socket.recv(1024).decode("ascii")#.strip()
+        response = client_socket.recv(1024).decode("ascii").strip()
         print(response)
 
-        if response != "270 SIG\n":
+        if response != "270 SIG":
             print ("Error: Invalid response from the server")
             # client_socket.close()
             return
         
-        received_sig = client_socket.recv(1024).decode("ascii")
+        received_sig = client_socket.recv(1024).decode("ascii").strip()
         print(received_sig)
-        
-        signature = signature+"\n"
 
         if received_sig == signature:
             client_socket.send("PASS\n".encode("ascii"))
@@ -116,10 +114,10 @@ def main():
             client_socket.send("FAIL\n".encode("ascii"))
         
 
-        new_response = client_socket.recv(1024).decode("ascii")
+        new_response = client_socket.recv(1024).decode("ascii").strip()
         print(new_response)
         
-        if new_response != "260 OK\n":
+        if new_response != "260 OK":
             print("no 260 OK response to pass/fail")
             #client_socket.close()
             return
