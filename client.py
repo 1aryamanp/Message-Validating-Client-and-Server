@@ -43,7 +43,12 @@ def read_signature_file(filename):
         print(f"Error: File '{filename}' not found.")
     
     return signatures
-    
+
+
+def escape(message):
+    message = message.replace(".", "\\.").replace("\\","\\\\")
+    return message
+  
     
 def main():
         
@@ -88,6 +93,8 @@ def main():
         client_socket.send("DATA\n".encode("ascii"))
 
         # send the message
+        # client_socket.send((message+"\n.\n").encode("ascii"))
+        message = escape(message)
         client_socket.send((message+"\n.\n").encode("ascii"))
         
         response = client_socket.recv(1024).decode("ascii").strip()

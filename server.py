@@ -3,19 +3,20 @@ import hashlib
 import sys
 import re
 
+'''
 def unescape(line):
     # Replace backslashes and periods with their escaped counterparts
     line = line.replace(".", "\\.")
     line = line.replace("\\.", ".")
     return line
-       
-
 '''
-def escape(line):
-    # Replace backslashes and periods with their escaped counterparts
-    line = line.replace("\\.", ".")
+def unescape(line):
+    line = line.replace("\\\\","\\").replace("\\.",".")
+    line = line.replace("\n.","").replace("\n","")
+    #line = line.replace(".", ".\n")
+    #line += "\n."
     return line
-'''
+
     
 def main():
     # Check if the correct number of command line arguments are provided
@@ -79,11 +80,11 @@ def main():
                     
                     # unescaping the message (have to fix)
                     line = unescape(line)
-                    print(line)
+                    
                     
                     # encoding using hash & sending to SHA 256
                     message_hash = hashlib.sha256(line.encode("ascii") + keys[i].encode("ascii"))
-                    print(message_hash)
+                    # print(message_hash)
                    
                     # updating with key
                     #print(keys[i])
@@ -92,9 +93,12 @@ def main():
                     
                     # equivalent hexadecimal value
                     hash_value = message_hash.hexdigest()
-                    print(hash_value)
+                    # print(hash_value)
                     
-
+                    #print message
+                    line+="\n."
+                    print(line)
+                    
                     # send the 270 SIG status code and the updated hash to the client
                     client_socket.send("270 SIG\n".encode("ascii"))
                     client_socket.send(hash_value.encode("ascii"))
