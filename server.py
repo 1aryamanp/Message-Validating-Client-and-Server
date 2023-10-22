@@ -8,7 +8,15 @@ def unescape(line):
     line = line.replace(".", "\\.")
     line = line.replace("\\.", ".")
     return line
+       
 
+'''
+def escape(line):
+    # Replace backslashes and periods with their escaped counterparts
+    line = line.replace("\\.", ".")
+    return line
+'''
+    
 def main():
     # Check if the correct number of command line arguments are provided
     if len(sys.argv) != 3:
@@ -28,6 +36,8 @@ def main():
         while line: # while there are more lines in the messages
             keys.append(line.strip())
             line = key_file.readline() # after stripping, read more
+    
+    i = 0
 
     # Create a socket and start listening on the specified port
 
@@ -59,6 +69,7 @@ def main():
 
             #print received command .. should be printing DATA
             print(command)
+            
 
             if command == "DATA":
                 while True:
@@ -71,13 +82,17 @@ def main():
                     print(line)
                     
                     # encoding using hash & sending to SHA 256
-                    message_hash = hashlib.sha256(line.encode("ascii"))
+                    message_hash = hashlib.sha256(line.encode("ascii") + keys[i].encode("ascii"))
+                    print(message_hash)
                    
                     # updating with key
-                    message_hash.update(keys[0].encode("ascii"))
+                    #print(keys[i])
+                    #message_hash.update(keys[i].encode("ascii"))
+                    #print(message_hash)
                     
                     # equivalent hexadecimal value
                     hash_value = message_hash.hexdigest()
+                    print(hash_value)
                     
 
                     # send the 270 SIG status code and the updated hash to the client
@@ -99,6 +114,7 @@ def main():
                         client_socket.close()
                         break
 
+                    i += 1
                     
                     # sending 260 ok
                     client_socket.send("260 OK\n".encode("ascii"))
@@ -108,6 +124,7 @@ def main():
                 # print and acknowledge quit command ^ i guess it is already coded above ?
                 # close the socket and exit the program
                 client_socket.close()
+                quit()
                 break
             
             else:
