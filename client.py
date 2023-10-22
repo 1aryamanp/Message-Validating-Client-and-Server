@@ -83,14 +83,12 @@ def main():
         client_socket.close()
         return
     
-    message_counter = 0
     for message, signature in zip(messages, signatures):
         # send data command
         client_socket.send("DATA\n".encode("ascii"))
 
         # send the message
-        # client_socket.send(f"{len(message)}\n".encode("ascii"))
-        client_socket.sendall((message+"\n.\n").encode("ascii"))
+        client_socket.send((message+"\n.\n").encode("ascii"))
         
         response = client_socket.recv(1024).decode("ascii").strip()
         print(response)
@@ -104,10 +102,8 @@ def main():
         print(received_sig)
 
         if received_sig == signature:
-            print('aryaman')
             client_socket.send("PASS\n".encode("ascii"))
         else:
-            print('vraj')
             client_socket.send("FAIL\n".encode("ascii"))
         
 
@@ -119,10 +115,6 @@ def main():
             #client_socket.close()
             return
         
-        message_counter += 1
-        
-        if message_counter == 10:
-            break
 
     #after sending the quit command
     client_socket.send("QUIT\n".encode("ascii"))

@@ -61,21 +61,24 @@ def main():
             print(command)
 
             if command == "DATA":
-                sha256_hash = hashlib.sha256()
                 while True:
+                    
+                    # reciving message from the client
                     line = client_socket.recv(1024).decode("ascii").strip()
+                    
+                    # unescaping the message (have to fix)
                     line = unescape(line)
-
-                    if not line:
-                        break
-
-                    # update the hash with the line
-                    sha256_hash.update(line.encode("ascii"))
-                    # sha256_hash.update(keys[key_index].encode("ascii"))
                     print(line)
-
-                    # generate the hash without newline characters
-                    hash_value = sha256_hash.hexdigest()
+                    
+                    # encoding using hash & sending to SHA 256
+                    message_hash = hashlib.sha256(line.encode("ascii"))
+                   
+                    # updating with key
+                    message_hash.update(keys[0].encode("ascii"))
+                    
+                    # equivalent hexadecimal value
+                    hash_value = message_hash.hexdigest()
+                    
 
                     # send the 270 SIG status code and the updated hash to the client
                     client_socket.send("270 SIG\n".encode("ascii"))
@@ -83,16 +86,23 @@ def main():
 
                     # pass_or_fail check from the client after sending message back
                     pass_or_fail = client_socket.recv(1024).decode("ascii").strip()
-                    print(pass_or_fail) # prints whatever response client sent
+                     # prints whatever response client sent
 
-                    if pass_or_fail not in ["PASS", "FAIL"]:
-                        print("client didnt say pass or fail.")
+                    if pass_or_fail == "PASS":
+                        # Handle the case where the client passed the validation
+                        print('PASS')
+                    elif pass_or_fail == "FAIL":
+                        # Handle the case where the client failed the validation
+                        print('FAIL')
+                    else:
+                        print("Invalid response from client")
                         client_socket.close()
                         break
 
                     
                     # sending 260 ok
                     client_socket.send("260 OK\n".encode("ascii"))
+                    break
 
             elif command == "QUIT":
                 # print and acknowledge quit command ^ i guess it is already coded above ?
