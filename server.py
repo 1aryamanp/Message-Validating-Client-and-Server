@@ -4,8 +4,10 @@ import sys
 
 
 def unescape(line):
-    line = line.replace("\\\\","\\").replace("\\.",".")
-    line = line.replace("\n.","").replace("\n","")
+    line = line.replace("\\.",".")
+    #line = line.replace("\n.","").replace("\n","")
+    line = line.replace("\.", ".")
+    line = line.replace("\n.\n","")
     return line
 
     
@@ -67,31 +69,29 @@ def main():
                 while True:
                     
                     # reciving message from the client
-                    line = client_socket.recv(1024).decode("ascii")#.strip()
+                    line = client_socket.recv(1024).decode("ascii")#.strip
+                    #print(line)
                     
                     # unescaping the message (have to fix)
                     line = unescape(line)
+                    #print(line)
                     
                     
                     # encoding using hash & sending to SHA 256
                     message_hash = hashlib.sha256(line.encode("ascii") + keys[i].encode("ascii"))
                     # print(message_hash)
-                   
-                    # updating with key
-                    #print(keys[i])
-                    #message_hash.update(keys[i].encode("ascii"))
-                    #print(message_hash)
-                    
+
                     # equivalent hexadecimal value
                     hash_value = message_hash.hexdigest()
                     # print(hash_value)
                     
                     #print message
-                    line+="\n."
+                    
                     print(line)
                     
                     # send the 270 SIG status code and the updated hash to the client
-                    client_socket.send("270 SIG\n".encode("ascii"))
+                    #client_socket.send(b"270 SIG\n".encode("ascii"))
+                    client_socket.send(b"270 SIG\n")
                     client_socket.send((hash_value+"\n").encode("ascii"))
 
                     # pass_or_fail check from the client after sending message back

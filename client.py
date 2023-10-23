@@ -46,7 +46,7 @@ def read_signature_file(filename):
 
 
 def escape(message):
-    message = message.replace(".", "\\.").replace("\\","\\\\")
+    message = message.replace(".", "\\.")
     return message
   
     
@@ -64,6 +64,7 @@ def main():
     #read message and signature files
     messages = read_message_file(message_file)
     signatures = read_signature_file(sig_file)
+    #print(messages)
     
 
     if len(messages) != len(signatures):
@@ -95,6 +96,7 @@ def main():
         # send the message
         # client_socket.send((message+"\n.\n").encode("ascii"))
         message = escape(message)
+        # client_socket.send((message+"\n.\n").encode("ascii"))
         client_socket.send((message+"\n.\n").encode("ascii"))
         
         response = client_socket.recv(1024).decode("ascii")#.strip()
@@ -132,7 +134,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-       
-    
-        
